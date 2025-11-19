@@ -1,45 +1,70 @@
-from telegram.ext import Updater, MessageHandler, Filters
 import re
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
 
+# 🔐 Токен бота
 TOKEN = '8510553698:AAHNZDB-7q5LMw8BPpAjCM5hMgzQu5SkqpM'
 
 # 📬 Список получателей
 RECIPIENTS = [431330942, 337029691]
 
+# 🎯 Целевые префиксы
 TARGET_PREFIX = "За командою НЕК"
 TARGET_LINE_PREFIX = "3.2"
 
-# 🗓️ Список украинских месяцев, которые бот будет ловить
+# 🗓️ Украинские месяцы
 MONTHS = ["листопада", "грудня"]
 
-def handle_message(update, context):
+# Команда /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Привет! Я бот, готов к работе.")
+
+# Обработка входящих сообщений
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
-    if TARGET_PREFIX in text:
-        # 🗓️ Ищем дату: "18 листопада", "1 грудня" и т.д.
-        date_match = re.search(r'(\d{1,2})\s+(' + '|'.join(MONTHS) + r')', text)
-        if date_match:
-            day = date_match.group(1)
-            month = date_match.group(2)
-            date_text = f"{day} {month}"
-        else:
-            date_text = "дата не найдена"
+    # Проверка на нужный префикс
+    if not text.startswith(TARGET_PREFIX):
+        return
 
-        # 🔍 Ищем строку, начинающуюся с "3.2"
-        for line in text.split('\n'):
-            if line.strip().startswith(TARGET_LINE_PREFIX):
-                response = f"На {date_text}:\n{line.strip()}"
-                for user_id in RECIPIENTS:
-                    context.bot.send_message(chat_id=user_id, text=response)
-                break
+    # Проверка на наличие строки с 3.2
+    if TARGET_LINE_PREFIX not in text:
+        return
 
+    # Проверка на наличие месяца
+    if not any(month in text.lower() for month in MONTHS):
+        return
+
+    # Пробуем найти дату (день + месяц)
+    date_match = re.search(r"(\d{1,2})\s+(" + "|".join(MONTHS) + r")", text.lower())
+    if date_match:
+        day, month = date_match.groups()
+        formatted_date = f"{day} {month}"
+    else:
+        formatted_date = "дату не удалось извлечь"
+
+    # Формируем сообщение
+    message = f"📌 Обнаружено сообщение с датой: {formatted_date}\n\n{text}"
+
+    # Рассылаем всем получателям
+    for user_id in RECIPIENTS:
+        try:
+            await context.bot.send_message(chat_id=user_id, text=message)
+        except Exception as e:
+            print(f"Ошибка при отправке {user_id}: {e}")
+
+# Запуск бота
 def main():
-    print("Бот запущен и слушает сообщения...")
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-    updater.start_polling()
-    updater.idle()
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.run_polling()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
