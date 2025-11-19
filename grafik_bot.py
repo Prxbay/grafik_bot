@@ -1,35 +1,33 @@
 import re
+import time
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
+from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
-# 🔐 Токен бота
-TOKEN = '8510553698:AAHNZDB-7q5LMw8BPpAjCM5hMgzQu5SkqpM'
+# 🔐 Токен из переменной окружения
+import os
+TOKEN = os.getenv("TOKEN")
 
-# 📬 Список получателей
-RECIPIENTS = [431330942, 337029691]
-
-# 🎯 Целевые префиксы
+# 🎯 Настройки фильтра
 TARGET_PREFIX = "За командою НЕК"
 TARGET_LINE_PREFIX = "3.2"
+MONTHS = [
+    "січня", "лютого", "березня", "квітня", "травня", "червня",
+    "липня", "серпня", "вересня", "жовтня", "листопада", "грудня"
+]
 
-# 🗓️ Украинские месяцы
-MONTHS = ["листопада", "грудня"]
+# 👥 Кому отправлять
+RECIPIENTS = [
+    123456789, 987654321  # замените на реальные user_id
+]
 
-# ✅ Команда /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я бот, готов к работе.")
-
-# ✅ Обработка сообщений
+# 🧠 Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
+
     text = update.message.text
 
-    if not text.startswith(TARGET_PREFIX):
+    if TARGET_PREFIX not in text:
         return
     if TARGET_LINE_PREFIX not in text:
         return
@@ -37,17 +35,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     date_match = re.search(r"(\d{1,2})\s+(" + "|".join(MONTHS) + r")", text.lower())
-    if date_match:
-        day, month = date_match.groups()
-        formatted_date = f"{day} {month}"
-    else:
-        formatted_date = "дату не удалось извлечь"
+    formatted_date = f"{date_match.group(1)} {date_match.group(2)}" if date_match else "дату не удалось извлечь"
 
     line_match = re.search(r"3\.2\s+([^\n\r]+)", text)
-    if line_match:
-        line_times = line_match.group(1).strip()
-    else:
-        line_times = "не удалось извлечь часи"
+    line_times = line_match.group(1).strip() if line_match else "не удалось извлечь часи"
 
     message = f"🗓️ Дата: {formatted_date}\n💡 Часи: {line_times}"
 
@@ -57,12 +48,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             print(f"Ошибка при отправке {user_id}: {e}")
 
-# ✅ Запуск
+# 🚀 Запуск бота
 def main():
-    app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(MessageHandler(filters.TEXT, handle_message))
+    print("Бот запущен")
     app.run_polling()
 
+# 🧩 Фейковый цикл для Render (если нужно)
 if __name__ == "__main__":
     main()
+    while True:
+        time.sleep(60)
