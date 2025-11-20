@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
 # 🔐 Токен напрямую (если не используешь переменные окружения)
-TOKEN = "8510553698:AAHNZDB-7q5LMw8BPpAjCM5hMgzQu5SkqpM"
+TOKEN = "8510553698:AAFix9NohN0_qeh3PNexO05YbwR6y5OygJI"
 
 # 👥 Список получателей
 RECIPIENTS = [
