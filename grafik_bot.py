@@ -1,64 +1,45 @@
-# -*- coding: utf-8 -*-
-
+from telegram.ext import Updater, MessageHandler, Filters
 import re
-import time
-from telegram import Update
-from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
-# 🔐 Токен напрямую (если не используешь переменные окружения)
-TOKEN = "8510553698:AAFix9NohN0_qeh3PNexO05YbwR6y5OygJI"
+TOKEN = '8534827974:AAEqQ8CN6KlU5dYBIW1ej0wcYnSUsMNr4bM'
 
-# 👥 Список получателей
-RECIPIENTS = [
-    431330942, 337029691  # замени на реальные user_id
-]
 
-# 📅 Настройки фильтра
+RECIPIENTS = [431330942, 337029691]
+
 TARGET_PREFIX = "За командою НЕК"
 TARGET_LINE_PREFIX = "3.2"
-MONTHS = [
-    "січня", "лютого", "березня", "квітня", "травня", "червня",
-    "липня", "серпня", "вересня", "жовтня", "листопада", "грудня"
-]
 
-# 🧠 Обработка сообщений
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = update.message
-    if not msg or not msg.text:
-        return
 
-    text = msg.text
+MONTHS = ["листопада", "грудня"]
 
-    if TARGET_PREFIX not in text:
-        return
-    if TARGET_LINE_PREFIX not in text:
-        return
-    if not any(month in text.lower() for month in MONTHS):
-        return
+def handle_message(update, context):
+    text = update.message.text
 
-    date_match = re.search(r"(\d{1,2})\s+(" + "|".join(MONTHS) + r")", text.lower())
-    formatted_date = f"{date_match.group(1)} {date_match.group(2)}" if date_match else "дату не знайдено"
+    if TARGET_PREFIX in text:
+       
+        date_match = re.search(r'(\d{1,2})\s+(' + '|'.join(MONTHS) + r')', text)
+        if date_match:
+            day = date_match.group(1)
+            month = date_match.group(2)
+            date_text = f"{day} {month}"
+        else:
+            date_text = "дата не найдена"
 
-    line_match = re.search(r"3\.2\s+([^\n\r]+)", text)
-    line_times = line_match.group(1).strip() if line_match else "часи не знайдено"
+        
+        for line in text.split('\n'):
+            if line.strip().startswith(TARGET_LINE_PREFIX):
+                response = f"На {date_text}:\n{line.strip()}"
+                for user_id in RECIPIENTS:
+                    context.bot.send_message(chat_id=user_id, text=response)
+                break
 
-    message = f"🗓️ Дата: {formatted_date}\n💡 Часи: {line_times}"
-
-    for user_id in RECIPIENTS:
-        try:
-            await context.bot.send_message(chat_id=user_id, text=message)
-        except Exception as e:
-            print(f"❌ Не вдалося надіслати {user_id}: {e}")
-
-# 🚀 Запуск
 def main():
-    app = Application.builder().token(TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT, handle_message))
-    print("✅ Бот запущено")
-    app.run_polling()
+    print("Бот запущен и слушает сообщения...")
+    updater = Updater(TOKEN, use_context=True)
+    dp = updater.dispatcher
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    updater.start_polling()
+    updater.idle()
 
-# 🧩 Цикл для Render (если нужно)
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
-    while True:
-        time.sleep(60)
